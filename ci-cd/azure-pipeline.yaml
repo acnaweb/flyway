@@ -1,0 +1,21 @@
+trigger:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+  - checkout: self
+
+  - script: |
+      curl -L https://repo1.maven.org/maven2/org/flywaydb/flyway-commandline/9.16.0/flyway-commandline-9.16.0-linux-x64.tar.gz | tar xz
+      sudo ln -s `pwd`/flyway-9.16.0/flyway /usr/local/bin/flyway
+    displayName: 'Instalar Flyway'
+
+  - script: |
+      echo '$(GCP_KEY)' > gcp-key.json
+      export GOOGLE_APPLICATION_CREDENTIALS=$(System.DefaultWorkingDirectory)/gcp-key.json
+      ./scripts/run-migrations.sh
+    displayName: 'Executar migrations'

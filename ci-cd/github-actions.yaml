@@ -1,0 +1,25 @@
+name: Flyway BigQuery Migration
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Instalar Flyway
+        run: |
+          curl -L https://repo1.maven.org/maven2/org/flywaydb/flyway-commandline/9.16.0/flyway-commandline-9.16.0-linux-x64.tar.gz | tar xz
+          sudo ln -s `pwd`/flyway-9.16.0/flyway /usr/local/bin/flyway
+
+      - name: Configurar credenciais GCP
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/gcp-key.json
+        run: |
+          echo '${{ secrets.GCP_KEY }}' > gcp-key.json
+
+      - name: Rodar migrations
+        run: ./scripts/run-migrations.sh

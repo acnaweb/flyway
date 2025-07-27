@@ -1,0 +1,15 @@
+@startuml
+title Flyway + BigQuery Migration Flow
+
+actor Developer
+entity "GitHub Repo" as Repo
+entity "CI/CD Pipeline" as Pipeline
+database "BigQuery" as BQ
+
+Developer -> Repo : Commit migrations
+Repo -> Pipeline : Trigger pipeline
+Pipeline -> BQ : Apply Flyway migrations
+BQ --> Pipeline : Migration status
+Pipeline --> Developer : Report (Success/Fail)
+
+@enduml
