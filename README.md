@@ -204,3 +204,20 @@ DROP TABLE IF EXISTS ${dataset}.customers;
 ✔ Estrutura dinâmica pronta  
 ✔ Pipelines configurados  
 ✔ Placeholders Flyway aplicados  
+
+
+```sh
+ docker run --rm \
+  --env-file .env \
+  -e GOOGLE_APPLICATION_CREDENTIALS=/opt/google/key.json \
+  -v /home/ac/local/gcp/study-gcp-398200.json:/opt/google/key.json \
+  -v ./migrations:/flyway/sql \
+  -v ./conf:/opt/conf \
+  flyway/flyway -configFiles=/opt/conf/flyway.conf info
+
+docker run --rm \
+-v $(pwd):/flyway/project \
+flyway/flyway -workingDirectory="/flyway/project " info
+
+
+```
