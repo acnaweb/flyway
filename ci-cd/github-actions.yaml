@@ -15,11 +15,10 @@ jobs:
           curl -L https://repo1.maven.org/maven2/org/flywaydb/flyway-commandline/9.16.0/flyway-commandline-9.16.0-linux-x64.tar.gz | tar xz
           sudo ln -s `pwd`/flyway-9.16.0/flyway /usr/local/bin/flyway
 
-      - name: Configurar credenciais GCP
-        env:
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/gcp-key.json
+      - name: Configurar variáveis de ambiente
         run: |
           echo '${{ secrets.GCP_KEY }}' > gcp-key.json
-
-      - name: Rodar migrations
-        run: ./scripts/run-migrations.sh
+          export GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/gcp-key.json
+          export GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}
+          export BIGQUERY_DATASET=${{ secrets.BIGQUERY_DATASET }}
+          ./scripts/run-migrations.sh

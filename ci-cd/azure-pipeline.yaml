@@ -17,5 +17,7 @@ steps:
   - script: |
       echo '$(GCP_KEY)' > gcp-key.json
       export GOOGLE_APPLICATION_CREDENTIALS=$(System.DefaultWorkingDirectory)/gcp-key.json
+      export GCP_PROJECT_ID=$(GCP_PROJECT_ID)
+      export BIGQUERY_DATASET=$(BIGQUERY_DATASET)
       ./scripts/run-migrations.sh
     displayName: 'Executar migrations'

@@ -1,5 +1,6 @@
-flyway.url=jdbc:bigquery://https://www.googleapis.com/bigquery/v2:443;ProjectId=my-project;DefaultDataset=my_dataset;OAuthType=0;OAuthServiceAcctEmail=my-service-account@my-project.iam.gserviceaccount.com;OAuthPvtKeyPath=/secrets/key.p12;OAuthPvtKeyPassword=notasecret
-flyway.user=my-service-account@my-project.iam.gserviceaccount.com
+flyway.url=jdbc:bigquery://https://www.googleapis.com/bigquery/v2:443;ProjectId=${GCP_PROJECT_ID};DefaultDataset=${BIGQUERY_DATASET};OAuthType=3
+flyway.user=no-user-needed
 flyway.locations=filesystem:./migrations
-flyway.schemas=my_dataset
+flyway.schemas=${BIGQUERY_DATASET}
 flyway.table=flyway_schema_history
+flyway.placeholders.dataset=${BIGQUERY_DATASET}

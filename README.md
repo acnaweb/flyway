@@ -1,10 +1,10 @@
-# ✅ Flyway  – Estrutura de Migrations e CI/CD
+# ✅ Flyway com BigQuery – Estrutura de Migrations e CI/CD (Dinâmico)
 
-Este projeto demonstra como usar **Flyway** para versionamento de esquema e tabelas no **Google BigQuery**, incluindo:
+Este projeto demonstra como usar **Flyway** para versionamento de esquema e tabelas no **Google BigQuery**, utilizando **variáveis de ambiente** para permitir configuração dinâmica em diferentes ambientes (dev, stage, prod).
 
 ✔ Estrutura de pastas  
-✔ Exemplo de migrations  
-✔ Configuração `flyway.conf`  
+✔ Exemplo de migrations com placeholders  
+✔ Configuração dinâmica com variáveis  
 ✔ Execução local  
 ✔ Pipeline CI/CD (GitHub Actions e Azure DevOps)  
 ✔ Fluxo visual com PlantUML  
@@ -29,7 +29,7 @@ flyway-bigquery/
 │   ├── github-actions.yml     # Pipeline GitHub Actions
 │   ├── azure-pipelines.yml    # Pipeline Azure DevOps
 │
-├── docs/
+├── diagrams/
 │   ├── flow.puml              # Diagrama do fluxo com PlantUML
 │
 └── README.md                  # Este documento
@@ -37,54 +37,46 @@ flyway-bigquery/
 
 ---
 
-## 🚀 **Por que usar Flyway com BigQuery?**
-- Controle de versão para datasets e tabelas.
-- Histórico centralizado (`flyway_schema_history`).
-- Automação em pipelines CI/CD.
-- Evita migrações manuais e inconsistências.
+## ✅ Variáveis de Ambiente Utilizadas
 
----
+| Variável                          | Descrição                                     |
+|---------------------------------|-----------------------------------------------|
+| `GCP_PROJECT_ID`                | ID do projeto no Google Cloud                |
+| `BIGQUERY_DATASET`              | Nome do dataset BigQuery para migrations     |
+| `GOOGLE_APPLICATION_CREDENTIALS`| Caminho para a chave JSON do Service Account |
 
-## ⚙️ **Configuração**
-
-### **1. Instalar Flyway**
-Baixe a versão mais recente:
+**Exemplo:**
 ```bash
-curl -L https://repo1.maven.org/maven2/org/flywaydb/flyway-commandline/9.16.0/flyway-commandline-9.16.0-linux-x64.tar.gz | tar xz
-sudo ln -s `pwd`/flyway-9.16.0/flyway /usr/local/bin/flyway
+export GCP_PROJECT_ID="meu-projeto"
+export BIGQUERY_DATASET="meu_dataset"
+export GOOGLE_APPLICATION_CREDENTIALS="/caminho/key.json"
 ```
 
 ---
 
-### **2. Configurar `flyway.conf`**
-Arquivo em `conf/flyway.conf`:
+## ⚙️ **Configuração Dinâmica no `flyway.conf`**
 
 ```properties
-flyway.url=jdbc:bigquery://https://www.googleapis.com/bigquery/v2:443;ProjectId=my-project;DefaultDataset=my_dataset;OAuthType=0;OAuthServiceAcctEmail=my-service-account@my-project.iam.gserviceaccount.com;OAuthPvtKeyPath=/secrets/key.p12;OAuthPvtKeyPassword=notasecret
-flyway.user=my-service-account@my-project.iam.gserviceaccount.com
+flyway.url=jdbc:bigquery://https://www.googleapis.com/bigquery/v2:443;ProjectId=${GCP_PROJECT_ID};DefaultDataset=${BIGQUERY_DATASET};OAuthType=3
+flyway.user=no-user-needed
 flyway.locations=filesystem:./migrations
-flyway.schemas=my_dataset
+flyway.schemas=${BIGQUERY_DATASET}
 flyway.table=flyway_schema_history
-```
-
-> ✅ **Autenticação via JSON**:  
-Defina a variável de ambiente:
-```bash
-export GOOGLE_APPLICATION_CREDENTIALS=/caminho/key.json
+flyway.placeholders.dataset=${BIGQUERY_DATASET}
 ```
 
 ---
 
-## 🛠 **Exemplo de Migrations**
+## 🛠 **Exemplo de Migrations com Placeholder**
 
 **`migrations/V1__create_dataset.sql`**
 ```sql
-CREATE SCHEMA IF NOT EXISTS my_dataset;
+CREATE SCHEMA IF NOT EXISTS ${dataset};
 ```
 
 **`migrations/V2__create_table_customers.sql`**
 ```sql
-CREATE TABLE IF NOT EXISTS my_dataset.customers (
+CREATE TABLE IF NOT EXISTS ${dataset}.customers (
     customer_id STRING,
     name STRING,
     created_at TIMESTAMP
@@ -93,19 +85,24 @@ CREATE TABLE IF NOT EXISTS my_dataset.customers (
 
 ---
 
-## ▶ **Executando Migrations Localmente**
+## ▶ **Execução Local**
+
 ```bash
+export GCP_PROJECT_ID="meu-projeto"
+export BIGQUERY_DATASET="meu_dataset"
+export GOOGLE_APPLICATION_CREDENTIALS="/caminho/key.json"
+
 flyway -configFiles=conf/flyway.conf migrate
 ```
 
-**Com script:**
+Ou usando script:
 ```bash
 ./scripts/run-migrations.sh
 ```
 
 ---
 
-## 🔄 **Pipeline CI/CD**
+## 🔄 **Pipeline CI/CD Dinâmico**
 
 ### ✅ **GitHub Actions (`ci-cd/github-actions.yml`)**
 ```yaml
@@ -126,14 +123,13 @@ jobs:
           curl -L https://repo1.maven.org/maven2/org/flywaydb/flyway-commandline/9.16.0/flyway-commandline-9.16.0-linux-x64.tar.gz | tar xz
           sudo ln -s `pwd`/flyway-9.16.0/flyway /usr/local/bin/flyway
 
-      - name: Configurar credenciais GCP
-        env:
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/gcp-key.json
+      - name: Configurar variáveis e rodar migrations
         run: |
           echo '${{ secrets.GCP_KEY }}' > gcp-key.json
-
-      - name: Rodar migrations
-        run: ./scripts/run-migrations.sh
+          export GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/gcp-key.json
+          export GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}
+          export BIGQUERY_DATASET=${{ secrets.BIGQUERY_DATASET }}
+          ./scripts/run-migrations.sh
 ```
 
 ---
@@ -159,6 +155,8 @@ steps:
   - script: |
       echo '$(GCP_KEY)' > gcp-key.json
       export GOOGLE_APPLICATION_CREDENTIALS=$(System.DefaultWorkingDirectory)/gcp-key.json
+      export GCP_PROJECT_ID=$(GCP_PROJECT_ID)
+      export BIGQUERY_DATASET=$(BIGQUERY_DATASET)
       ./scripts/run-migrations.sh
     displayName: 'Executar migrations'
 ```
@@ -169,12 +167,12 @@ steps:
 
 ```plantuml
 @startuml
-title Flyway + BigQuery Migration Flow
+title Flyway + BigQuery Migration Flow (com variáveis dinâmicas)
 
 actor Developer
 entity "GitHub Repo" as Repo
 entity "CI/CD Pipeline" as Pipeline
-database "BigQuery" as BQ
+database "BigQuery (${GCP_PROJECT_ID}.${BIGQUERY_DATASET})" as BQ
 
 Developer -> Repo : Commit migrations
 Repo -> Pipeline : Trigger pipeline
@@ -188,22 +186,21 @@ Pipeline --> Developer : Report (Success/Fail)
 ---
 
 ## ✅ **Melhores Práticas**
-- Sempre criar migrations idempotentes (`IF NOT EXISTS`).
-- Usar **datasets diferentes** para ambientes (dev, stage, prod).
-- Integrar com **notificações** (Slack, e-mail) no pipeline.
-- Revisar scripts antes de aplicar em produção.
+- Nunca hardcode project/dataset → use variáveis.
+- Criar migrations idempotentes (`IF NOT EXISTS`).
+- Diferenciar ambientes com variáveis do pipeline.
+- Adicionar notificações (Slack, email) no pipeline.
 
 ---
 
 ## ✅ **Rollback**
-BigQuery não suporta `ROLLBACK` nativamente. Para reverter, crie uma migration com as alterações inversas:
+BigQuery não suporta rollback automático. Para reverter, crie uma migration inversa:
 ```sql
-DROP TABLE IF EXISTS my_dataset.customers;
+DROP TABLE IF EXISTS ${dataset}.customers;
 ```
 
 ---
 
-### **Próximos Passos**
-✔ Estrutura do projeto criada  
-✔ Configuração do Flyway definida  
-✔ Pipeline CI/CD pronto  
+✔ Estrutura dinâmica pronta  
+✔ Pipelines configurados  
+✔ Placeholders Flyway aplicados  
