@@ -1,23 +1,53 @@
-trigger:
-  branches:
-    include:
-      - main
+trigger: none
 
-pool:
-  vmImage: 'ubuntu-latest'
+parameters:
+  - name: gcp_project_id
+    displayName: "GCP Project ID"
+    type: string
+  - name: bigquery_dataset
+    displayName: "BigQuery Dataset"
+    type: string
+  - name: environment
+    displayName: "Environment"
+    type: string
+    default: "dev"
+    values:
+      - dev
+      - hml
+      - prd
 
-steps:
-  - checkout: self
+stages:
+  - stage: Migrate
+    displayName: "Run Flyway Migrations"
+    jobs:
+      - job: FlywayMigration
+        displayName: "Flyway Migration Job"
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - checkout: self
 
-  - script: |
-      curl -L https://repo1.maven.org/maven2/org/flywaydb/flyway-commandline/9.16.0/flyway-commandline-9.16.0-linux-x64.tar.gz | tar xz
-      sudo ln -s `pwd`/flyway-9.16.0/flyway /usr/local/bin/flyway
-    displayName: 'Instalar Flyway'
+          - script: |
+              curl -L https://repo1.maven.org/maven2/org/flywaydb/flyway-commandline/9.16.0/flyway-commandline-9.16.0-linux-x64.tar.gz | tar xz
+              sudo ln -s `pwd`/flyway-9.16.0/flyway /usr/local/bin/flyway
+            displayName: "Install Flyway"
 
-  - script: |
-      echo '$(GCP_KEY)' > gcp-key.json
-      export GOOGLE_APPLICATION_CREDENTIALS=$(System.DefaultWorkingDirectory)/gcp-key.json
-      export GCP_PROJECT_ID=$(GCP_PROJECT_ID)
-      export BIGQUERY_DATASET=$(BIGQUERY_DATASET)
-      ./scripts/run-migrations.sh
-    displayName: 'Executar migrations'
+          - script: |
+              echo "Selecionando credenciais para ambiente: ${{ parameters.environment }}"
+              if [ "${{ parameters.environment }}" = "dev" ]; then
+                echo '$(GCP_KEY_DEV)' > gcp-key.json
+              elif [ "${{ parameters.environment }}" = "hml" ]; then
+                echo '$(GCP_KEY_HML)' > gcp-key.json
+              elif [ "${{ parameters.environment }}" = "prd" ]; then
+                echo '$(GCP_KEY_PRD)' > gcp-key.json
+              else
+                echo "Ambiente inválido!"
+                exit 1
+              fi
+
+              export GOOGLE_APPLICATION_CREDENTIALS=$(System.DefaultWorkingDirectory)/gcp-key.json
+              export GCP_PROJECT_ID=${{ parameters.gcp_project_id }}
+              export BIGQUERY_DATASET=${{ parameters.bigquery_dataset }}
+
+              ./scripts/run-migrations.sh
+            displayName: "Run Flyway Migration"

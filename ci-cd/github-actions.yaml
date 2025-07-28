@@ -1,8 +1,24 @@
 name: Flyway BigQuery Migration
 
 on:
-  push:
-    branches: [ "main" ]
+  workflow_dispatch:
+    inputs:
+      gcp_project_id:
+        description: "ID do projeto no GCP"
+        required: true
+        type: string
+      bigquery_dataset:
+        description: "Nome do dataset no BigQuery"
+        required: true
+        type: string
+      environment:
+        description: "Ambiente (dev, hml, prd)"
+        required: true
+        type: choice
+        options:
+          - dev
+          - hml
+          - prd
 
 jobs:
   migrate:
@@ -15,10 +31,21 @@ jobs:
           curl -L https://repo1.maven.org/maven2/org/flywaydb/flyway-commandline/9.16.0/flyway-commandline-9.16.0-linux-x64.tar.gz | tar xz
           sudo ln -s `pwd`/flyway-9.16.0/flyway /usr/local/bin/flyway
 
-      - name: Configurar variáveis de ambiente
+      - name: Configurar credenciais GCP
+        env:
+          ENVIRONMENT: ${{ github.event.inputs.environment }}
         run: |
-          echo '${{ secrets.GCP_KEY }}' > gcp-key.json
+          # Pega a chave correspondente ao ambiente
+          if [ "$ENVIRONMENT" = "dev" ]; then
+            echo '${{ secrets.GCP_KEY_DEV }}' > gcp-key.json
+          elif [ "$ENVIRONMENT" = "hml" ]; then
+            echo '${{ secrets.GCP_KEY_HML }}' > gcp-key.json
+          elif [ "$ENVIRONMENT" = "prd" ]; then
+            echo '${{ secrets.GCP_KEY_PRD }}' > gcp-key.json
+          fi
+
           export GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/gcp-key.json
-          export GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}
-          export BIGQUERY_DATASET=${{ secrets.BIGQUERY_DATASET }}
+          export GCP_PROJECT_ID=${{ github.event.inputs.gcp_project_id }}
+          export BIGQUERY_DATASET=${{ github.event.inputs.bigquery_dataset }}
+
           ./scripts/run-migrations.sh
